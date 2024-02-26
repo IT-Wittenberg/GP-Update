@@ -6,7 +6,7 @@
 void logAdd(char *text, char *host);
 
 const int globalDelay = 2; // set delay between next trys 
-const int maxTryOpenFile = 3; // open the file for writing try "maxTryOpenFile" times
+const int maxTryOpenFile = 4; // open the file for writing try "maxTryOpenFile" times
 
 int main(void) {
     // get client hostname
