@@ -27,12 +27,10 @@ int main(void) {
     
     if (gp_result == 0) {
         log_message("Gruppenrichtlinien erfolgreich aktualisiert.");
-        printf("Gruppenrichtlinien erfolgreich aktualisiert.\n");
     } else {
         char error_message[150];
         snprintf(error_message, sizeof(error_message), "Fehler beim Aktualisieren der Gruppenrichtlinien. Fehlercode: %d", gp_result);
         log_message(error_message);
-        printf("%s\n", error_message);
     }
     
     return gp_result;
