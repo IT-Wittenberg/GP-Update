@@ -1,70 +1,92 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
-#include <unistd.h>
+#ifdef _WIN32
+    #include <windows.h>
+    #include <Lmcons.h>
+#else
+    #include <unistd.h>
+    #include <sys/types.h>
+    #include <pwd.h>
+#endif
 
-// Global Variables
-const char * logfile = "\\\\stadtwbbaram\\dip$\\Apl\\Custom Programs\\Logs\\gpupdate.log";
-const int scanLimiter = 1; // limit for retry scan { 1 means 1 retry}
-const int fileLimiter = 3; // open the file for writing try "maxTryOpenFile" times
-const char buffer[13]; // global Buffer used for getHostname {13 byte long }
-char hostname[sizeof(buffer)];
+// Define Log Konfiguration
+#define LOG_FILE "gpupdate.log"
+#define MAX_LOG_SIZE 10485760 // 10MB
+#define BACKUP_LOG_FILE "gpupdate_backup.log"
 
-// Prototypes
-void getHost(void);
-void logAdd(char host[sizeof(buffer)], char *text);
+// Funktionsprototypen
+void get_hostname(char *hostname, size_t size);
+void get_username(char *username, size_t size);
+void log_message(const char *message);
 
 int main(void) {
-    getHost();
-
-    logAdd(hostname, "Starte gpupdate /force ...");
-
-    int gp_result = system("echo N | gpupdate /force"); 
-
-    if (gp_result != 0) logAdd(hostname, "GRUPPENRICHTLINIEN KONNTEN NICHT AKTUALISIERT WERDEN");
-    else logAdd(hostname, "Gruppenrichtlinien wurden aktualisiert");
-
+    log_message("Starte Gruppenrichtlinienaktualisierung...");
+    int gp_result = system("echo N | gpupdate /force");
+    
+    if (gp_result == 0) {
+        log_message("Gruppenrichtlinien erfolgreich aktualisiert.");
+        printf("Gruppenrichtlinien erfolgreich aktualisiert.\n");
+    } else {
+        char error_message[150];
+        snprintf(error_message, sizeof(error_message), "Fehler beim Aktualisieren der Gruppenrichtlinien. Fehlercode: %d", gp_result);
+        log_message(error_message);
+        printf("%s\n", error_message);
+    }
+    
     return gp_result;
 }
 
-void getHost(void) {
-    // get client hostname
-    system("hostname > t.txt");
-    
-    char fileText[sizeof(buffer)];
-    FILE *fp;
-
-    fp = fopen("t.txt","r");
-    fgets(fileText,sizeof(buffer),fp);
-    fclose(fp);
-
-    system("del t.txt");;
-
-    strcpy(hostname, fileText);
+void get_hostname(char *hostname, size_t size) {
+    #ifdef _WIN32
+        DWORD hostname_len = size;
+        GetComputerNameA(hostname, &hostname_len);
+    #else
+        gethostname(hostname, size);
+    #endif
 }
 
-void logAdd(char host[sizeof(buffer)], char *message) {
-    const int delay = 2; // set delay between next trys 
-    const time_t t = time(NULL);
-    const struct tm tm = *localtime(&t);
-    
-    FILE *fp;
-    int openFile = 0;
-
-    for (int i = 0; i<fileLimiter; i++) {
-        fp = fopen(logfile, "a");
-        if (fp != NULL) {
-            openFile = 1;        
-            break;
+void get_username(char *username, size_t size) {
+    #ifdef _WIN32
+        DWORD username_len = size;
+        GetUserNameA(username, &username_len);
+    #else
+        struct passwd *pw = getpwuid(getuid());
+        if (pw) {
+            strncpy(username, pw->pw_name, size);
+            username[size - 1] = '\0';
+        } else {
+            strncpy(username, "unknown", size);
         }
-        if (i==fileLimiter) break;
-        sleep(delay);
-    }
+    #endif
+}
 
-    if (openFile == 1) {
-        fprintf(fp, "%d-%02d-%02d %02d:%02d - { %s } - { %s }\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, host, message);
-        fclose(fp);
-    } else {
-        printf("Datei konnte nicht geöffnet werden. Kein Logeintrag erstellt.");
+void log_message(const char *message) {
+    FILE *log_file = fopen(LOG_FILE, "a");
+    if (!log_file) return;
+    
+    fseek(log_file, 0, SEEK_END);
+    long file_size = ftell(log_file);
+    
+    if (file_size >= MAX_LOG_SIZE) {
+        fclose(log_file);
+        remove(BACKUP_LOG_FILE);
+        rename(LOG_FILE, BACKUP_LOG_FILE);
+        log_file = fopen(LOG_FILE, "a");
+        if (!log_file) return;
     }
+    
+    time_t now = time(NULL);
+    char time_str[20];
+    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    
+    char hostname[256];
+    get_hostname(hostname, sizeof(hostname));
+    
+    char username[256];
+    get_username(username, sizeof(username));
+    
+    fprintf(log_file, "%s - %s - %s - %s\n", time_str, hostname, username, message);
+    fclose(log_file);
 }
