@@ -12,9 +12,9 @@
 #endif
 
 // Define Log Konfiguration
-#define LOG_FILE "gpupdate.log"
+#define LOG_FILE "\\\\stadtwbbaram\\Logs\\gpupdate.log"
 #define MAX_LOG_SIZE 10485760 // 10MB
-#define BACKUP_LOG_FILE "gpupdate_backup.log"
+#define BACKUP_LOG_FILE "\\\\stadtwbbaram\\Logs\\gpupdate_backup.log"
 
 // Funktionsprototypen
 void get_hostname(char *hostname, size_t size);
