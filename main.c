@@ -24,7 +24,6 @@ void RunGpupdateSilent() {
 
     // Prozess ohne sichtbares Fenster starten
     if (!CreateProcess(NULL, command, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
-        printf("Fehler beim Starten des Prozesses: %lu\n", GetLastError());
         return;
     }
 
@@ -35,4 +34,3 @@ void RunGpupdateSilent() {
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
 }
-
